@@ -1,13 +1,27 @@
 from aiogram import Bot, F, Router, html
+from aiogram.enums import ChatMemberStatus
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
-from bot.buttuns.inline import send_text, confirm_inl, link, admins, show_channels
-from bot.handlers.add_channels import channels_db
+from bot.buttuns.inline import send_text, confirm_inl, link, admins, show_channels, make_channels
 from bot.state.states import SendTextState, AddAdmin, ForwardState
 from db import User
+from db.models.model import Channels
 
 admin_router = Router()
+
+
+async def mandatory_channel(user_id, bot: Bot):
+    form_kb = []
+    channels = await Channels.get_all()
+    for channel_id in channels:
+        member = await bot.get_chat_member(channel_id.id, user_id)
+        if member.status == ChatMemberStatus.LEFT:
+            form_kb.append(channel_id.id)
+    if form_kb:
+        return form_kb
+    else:
+        return
 
 
 @admin_router.callback_query(F.data.startswith('settings_'))
@@ -27,11 +41,8 @@ async def leagues_handler(call: CallbackQuery, bot: Bot, state: FSMContext):
         await state.set_state(ForwardState.chat_id)
         await call.message.answer(text='Forward qilib message tashlang')
     elif data == 'subscribe':
-        if channels_db:
-            await call.message.answer('Kanallar ro\'yxati',
-                                      reply_markup=await show_channels(channels=channels_db, bot=bot))
-        else:
-            await call.message.answer('Kanallar xali qoshilmagan')
+        await call.message.edit_text('Kanallar ro\'yxati',
+                                     reply_markup=await show_channels(bot=bot))
 
 
 @admin_router.callback_query(F.data.startswith('admins_'))

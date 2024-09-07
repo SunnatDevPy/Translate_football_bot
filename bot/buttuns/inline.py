@@ -3,6 +3,7 @@ from aiogram.types import InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from db import User
+from db.models.model import Channels
 
 
 def link(url):
@@ -145,9 +146,12 @@ def confirm_inl():
 
 async def make_channels(channel_ids, bot):
     ikb = InlineKeyboardBuilder()
+    count = 1
+    print(channel_ids)
     for channel_id in channel_ids:
         data = await bot.create_chat_invite_link(chat_id=channel_id)
-        ikb.row(InlineKeyboardButton(text=f'Kanal {channel_ids[channel_id]["title"]}', url=data.invite_link))
+        ikb.row(InlineKeyboardButton(text=f'Kanal {count}', url=data.invite_link))
+        count += 1
     ikb.row(InlineKeyboardButton(text='Tasdiqlash', callback_data='confirm_channel'))
     return ikb.as_markup()
 
@@ -161,15 +165,15 @@ def confirm_channels(title, url):
     return ikb.as_markup()
 
 
-async def show_channels(channels, bot: Bot):
+async def show_channels(bot: Bot):
     ikb = InlineKeyboardBuilder()
+    channels: list['Channels'] = await Channels.get_all()
     for i in channels:
-        channel = channels[i]
-        data = await bot.create_chat_invite_link(int(i))
-        ikb.add(*[InlineKeyboardButton(text=channel.get('title'), url=data.invite_link),
-                  InlineKeyboardButton(text='❌', callback_data=f'channel_clear_{i}')])
-    ikb.row(InlineKeyboardButton(text='Kanal qo\'shish', callback_data='channel_add'))
+        data = await bot.create_chat_invite_link(i.id)
+        print(i.id, data.invite_link)
+        ikb.add(*[InlineKeyboardButton(text=i.title, url=data.invite_link),
+                  InlineKeyboardButton(text='❌', callback_data=f'channel_clear_{i.id}')])
+    ikb.add(*[InlineKeyboardButton(text="Kanal qo'shish", callback_data='channel_add'),
+              InlineKeyboardButton(text="⬅️Ortga", callback_data='back_settings')])
     ikb.adjust(2, repeat=True)
     return ikb.as_markup()
-
-

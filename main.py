@@ -3,15 +3,12 @@ import logging
 import sys
 
 from aiogram import Dispatcher, Bot
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-from aiogram.types import BotCommand, BotCommandScopeChat
+from aiogram.types import BotCommand
 
 from bot.handlers.add_channels import channels_router
 from bot.handlers.admin import admin_router
 from bot.handlers.game import game_router
 from bot.handlers.start import start_router
-# from bot.middleware.mandatory_channel import JoinChannelMiddleware
 from config import conf
 from db import database
 
@@ -19,13 +16,9 @@ from db import database
 async def on_start(bot: Bot):
     await database.create_all()
     commands_admin = [
-        BotCommand(command='start', description="Bo'tni ishga tushirish"),
-        BotCommand(command='add', description="Kanal qoshish"),
-        BotCommand(command='channels', description="Kanallar royxati"),
-        BotCommand(command='get_id', description="id qaytarish")
+        BotCommand(command='start', description="Bo'tni ishga tushirish")
     ]
-    s = BotCommandScopeChat(chat_id=conf.bot.ADMIN)
-    await bot.set_my_commands(commands=commands_admin, scope=s)
+    await bot.set_my_commands(commands=commands_admin)
 
 
 async def on_shutdown(bot: Bot):
@@ -37,7 +30,8 @@ async def main():
     dp.include_routers(start_router, game_router, admin_router, channels_router)
     dp.startup.register(on_start)
     dp.shutdown.register(on_shutdown)
-    # dp.update.outer_middleware(JoinChannelMiddleware())
+    # dp.callback_query.outer_middleware(ConfirmChannelMiddleware())
+    # dp.message.outer_middleware(Middleware())
     bot = Bot(token=conf.bot.BOT_TOKEN)
     await dp.start_polling(bot)
 

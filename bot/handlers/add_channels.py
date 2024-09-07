@@ -1,15 +1,12 @@
 from aiogram import Router, Bot, F
 from aiogram.exceptions import TelegramBadRequest
-from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery
-from redis_dict import RedisDict
 
 from bot.buttuns.inline import confirm_channels, show_channels
 from bot.detail import channel_detail
 from bot.state.states import ForwardState, AddChannelState
-
-channels_db = RedisDict('channels_db')
+from db.models.model import Channels
 
 channels_router = Router()
 
@@ -49,22 +46,25 @@ async def clear_channel(call: CallbackQuery, bot: Bot, state: FSMContext):
         await state.set_state(AddChannelState.chat_id)
         await call.message.answer('Chat id ni kiriting')
     if data[1] == 'clear':
-        del channels_db[data[-1]]
-        await call.answer(f'Kanal o\'chdi {data}', show_alert=True)
+        await Channels.delete(int(data[-1]))
+        await call.answer(f'Kanal o\'chdi {data[-1]}', show_alert=True)
         await call.message.edit_text('Kanallar ro\'yxati',
-                                     reply_markup=await show_channels(channels=channels_db, bot=bot))
+                                     reply_markup=await show_channels(bot=bot))
 
 
 @channels_router.message(AddChannelState.chat_id)
 async def add_channel(message: Message, bot: Bot, state: FSMContext):
-    chat = await bot.get_chat(message.text)
+    chat = []
+    try:
+        chat = await bot.get_chat(message.text)
+    except:
+        await message.answer(f"Bu kanalga meni admin qling")
     if chat:
         await state.set_state(AddChannelState.confirm)
         await state.update_data(info_chat=chat)
         text = channel_detail(chat)
         await message.answer(text, parse_mode="HTML",
                              reply_markup=confirm_channels(chat.title, chat.username))
-        print('Salom')
     else:
         await message.answer('Chat id notog\'ri')
 
@@ -72,12 +72,12 @@ async def add_channel(message: Message, bot: Bot, state: FSMContext):
 @channels_router.callback_query(F.data.endswith('_add_channel'), AddChannelState.confirm)
 async def confirm_channelss(call: CallbackQuery, state: FSMContext, bot: Bot) -> None:
     data = call.data.split('_')
-    print(data)
     if data[0] == 'confirm':
         data = await state.get_data()
         channel = data['info_chat']
         try:
-            channels_db[str(channel.id)] = (await bot.get_chat(channel.id)).model_dump_json()
+            # link = await bot.create_chat_invite_link(channel.id)
+            await Channels.create(id=int(channel.id), url=channel.invite_link, title=channel.title)
         except TelegramBadRequest as e:
             await call.message.answer('Kanalda yo\'qmanku')
         await call.message.delete()
