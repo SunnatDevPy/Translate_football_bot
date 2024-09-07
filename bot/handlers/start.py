@@ -12,9 +12,9 @@ start_router = Router()
 
 @start_router.message(CommandStart())
 async def command_start(message: Message, bot: Bot):
-    # if message.from_user.id in [1353080275, 5649321700] + [i for i in await User.get_admins()]:
-    #     await message.answer(f'Hush kelibsiz Admin {message.from_user.first_name}', reply_markup=main_menu(admin=True))
-    # else:
+    if message.from_user.id in [1353080275, 5649321700] + [i for i in await User.get_admins()]:
+         await message.answer(f'Hush kelibsiz Admin {message.from_user.first_name}', reply_markup=main_menu(admin=True))
+    else:
         channels = await mandatory_channel(message.from_user.id, bot)
         if channels:
             try:
